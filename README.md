@@ -1,79 +1,81 @@
-## Build a receipt and invoice processing pipeline with Amazon Textract
-The repository provides a reference architecture to  build a invoice automation pipeline that enables extraction, verification, archival and intelligent search.
+# Simplified Invoice Processor with Amazon Textract
 
-### Architecture
-The following architecture diagram shows the stages of a receipt and invoice processing workflow. It starts with a Document Capture stage to securely collect and store scanned invoices and receipts. The next stage is the extraction phase where we pass the collected invoices and receipts to Amazon Textract’s AnalyzeExpense API to extract financially related relationships between text such as Vendor Name, Invoice Receipt Date, Order Date, Amount Due/Paid, etc. In the next stage, we use few pre-defined expense rules to determine if we should auto-auto approve or reject our receipt. Auto approved and rejected documents go to their respective S3 buckets. For auto-approved documents, you can search all the extracted fields and values using OpenSearch. The indexed metadata can be visualized using OpenSearch dashboard.. Auto-approved documents are also set up to be moved to Glacier Vault for long term archival using S3 lifecycle policies. 
+This project demonstrates a serverless invoice processing pipeline tailored for educational purposes. It uses a simplified architecture to extract data from PDF invoices using Amazon Textract and convert it into CSV format.
 
-![Architecture](invoice-processing-architecture.png)
+## Architecture
 
-### Steps to deploy
+The workflow is streamlined to use minimal AWS services for ease of understanding and deployment:
 
-####  Clone the repository
-```bash
-git clone https://github.com/aws-samples/amazon-textract-invoice-processor.git
-```
+1. **Upload**: Users upload PDF invoices via a static web interface directly to an **Amazon S3** bucket (secured via **Amazon Cognito**).
+2. **Trigger**: An **AWS Lambda** function is triggered automatically when a new PDF is uploaded.
+3. **Process**: The Lambda function calls **Amazon Textract** (AnalyzeExpense API) to extract key fields (Vendor, Date, Total, Invoice Number).
+4. **Output**: The extracted data is formatted as a CSV file and saved back to the S3 bucket in an `output/` folder.
+5. **Archive**: The original PDF is moved to an `archive/` folder to keep the upload area clean.
 
-#### Install dependencies
-```bash
-pip install -r requirements.txt
-```
+## Prerequisites
 
-#### Deploy InvoiceProcessor stack
-```bash
-# If you are running cdk first time in the account, run `cdk bootstrap` step first
-cdk deploy
-```
+- AWS CLI installed and configured
+- Node.js & NPM (for CDK)
+- Python 3.9+
+- AWS CDK Toolkit (`npm install -g aws-cdk`)
 
-The deployment takes around 25 minutes with the default configuration settings from the GitHub samples, and creates a Step Functions workflow, which is invoked when a document is put at an Amazon S3 bucket/prefix and subsequently is processed till the content of the document is indexed in an OpenSearch cluster.
+## Deployment Steps
 
-The following is a sample output including useful links and information generated from `cdk deploy` command:
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/aws-samples/amazon-textract-invoice-processor.git
+   cd amazon-textract-invoice-processor/code
+   ```
 
-```bash
-Outputs:
-InvoiceProcessorWorkflow.CognitoUserPoolLink = https://us-east-2.console.aws.amazon.com/cognito/v2/idp/user-pools/us-east-2_f45Cf0MWa/users?region=us-east-2
-InvoiceProcessorWorkflow.DocumentQueueLink = https://us-east-2.console.aws.amazon.com/sqs/v2/home?region=us-east-2#/queues/https%3A%2F%2Fsqs.us-east-2.amazonaws.com%2F145020893107%2FInvoiceProcessorWorkflow-ExecutionThrottleDocumentQueueDC0218C-r6P9PQvlZsJ2.fifo
-InvoiceProcessorWorkflow.DocumentUploadLocation = s3://invoiceprocessorworkflow-invoiceprocessorbucketf1-lzei1g235krx/uploads/
-InvoiceProcessorWorkflow.OpenSearchDashboard = https://search-idp-cdk-opensearch-n3r3zkhwlabgz6vp5lq4bk7yf4.us-east-2.es.amazonaws.com/_dashboards
-InvoiceProcessorWorkflow.OpenSearchLink = https://us-east-2.console.aws.amazon.com/aos/home?region=us-east-2#/opensearch/domains/idp-cdk-opensearch
-InvoiceProcessorWorkflow.RulesTableName = InvoiceProcessorWorkflow-ExpenseValidationRulesTableEB3DAEF1-I1IY5U27MWF7
-InvoiceProcessorWorkflow.StepFunctionFlowLink = https://us-east-2.console.aws.amazon.com/states/home?region=us-east-2#/statemachines/view/arn:aws:states:us-east-2:145020893107:stateMachine:InvoiceProcessorF68A161B-lcypjz3p5YZc
-```
+2. **Install Python Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-This information is also available in the AWS CloudFormation Console.
+3. **Deploy the Stack**
+   ```bash
+   # Bootstrap CDK (only needed once per region)
+   cdk bootstrap
 
-After the cdk deployment is complete, create a couple of validation rules in Dynamodb table. You can open CloudShell from AWS Console and run these commands:
-```bash
-aws dynamodb execute-statement --statement "INSERT INTO \"$(aws cloudformation list-exports --query 'Exports[?Name==`InvoiceProcessorWorkflow-RulesTableName`].Value' --output text)\" VALUE {'ruleId': 1, 'type': 'regex', 'field': 'INVOICE_RECEIPT_ID', 'check': '(?i)[0-9]{3}[a-z]{3}[0-9]{3}$', 'errorTxt': 'Receipt number is not valid. It is of the format: 123ABC456'}"
-aws dynamodb execute-statement --statement "INSERT INTO \"$(aws cloudformation list-exports --query 'Exports[?Name==`InvoiceProcessorWorkflow-RulesTableName`].Value' --output text)\" VALUE {'ruleId': 2, 'type': 'regex', 'field': 'PO_NUMBER', 'check': '(?i)[a-z0-9]+$', 'errorTxt': 'PO number is not present'}"
-```
+   # Deploy the changes
+   cdk deploy
+   ```
 
-We also need to create a folder named `uploads` under the bucket: InvoiceProcessorWorkflow.DocumentLocation. This is where input receipts/invoices are going to be placed.
-When a new document is placed under InvoiceProcessorWorkflow.DocumentLocation/uploads, a new Step Functions workflow is started for this document.
+## Post-Deployment Configuration
 
-To check the status of this document, the InvoiceProcessorWorkflow.StepFunctionFlowLink provides a link to the list of StepFunction executions in the AWS Management Console, displaying the status of the document processing for each document uploaded to Amazon S3. The tutorial Viewing and debugging executions on the Step Functions console provides an overview of the components and views in the AWS Console.
+After a successful deployment, you will see `Outputs` in your terminal. You need these to configure the web frontend.
+
+1. **Locate Outputs**: Look for `BucketName`, `IdentityPoolId`, and `WebUrl` in the `Outputs` section.
+2. **Update Frontend**:
+   - Open `web/index.html`.
+   - Replace the `YOUR_BUCKET_NAME_HERE` and `us-east-1:xxxxxx-xxxx-xxxx-xxxx-xxxxxx` placeholders with the values from your deployment outputs.
+   - Also ensure `REGION` matches your deployment region (e.g., `us-east-1`).
+3. **Deploy Frontend**:
+   - Upload the modified `index.html` to your S3 bucket to serve the website.
+   ```bash
+   aws s3 cp web/index.html s3://<YOUR_BUCKET_NAME>/index.html
+   ```
+
+## Usage
+
+1. **Open the Web App**: Find the `WebUrl` output from the deployment (or navigate to the S3 bucket's website endpoint).
+2. **Upload Invoice**: Click "Choose File" to select a PDF invoice and click "Upload PDF".
+3. **Wait & Refresh**: The processing takes a few seconds. Click "Refresh List" to see the generated `.csv` files.
+4. **Download**: Click on a CSV file to download the extracted data.
 
 ## Cleanup
 
-* Empty the S3 bucket
-* Get the cognito user pool id using:
+To avoid incurring future charges, delete the resources:
+
+1. **Empty the S3 Bucket** (CDK cannot delete a non-empty bucket):
    ```bash
-   cognito_user_pool=$(aws cloudformation list-exports --query 'Exports[?Name==`InvoiceProcessorWorkflow-CognitoUserPoolId`].Value' --output text)
-   echo $cognito_user_pool
+   aws s3 rm s3://<YOUR_BUCKET_NAME> --recursive
    ```
-* Run cdk destroy
+2. **Destroy the Stack**:
    ```bash
    cdk destroy
    ```
-* Delete Cognito user pool either from ui or from console
-   ```bash
-   aws cognito-idp  delete-user-pool --user-pool-id $cognito_user_pool
-   ```
-
-## Security
-
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
 
 ## License
 
 This library is licensed under the MIT-0 License. See the LICENSE file.
-
