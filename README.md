@@ -1,4 +1,4 @@
-# Simplified Invoice Processor with Amazon Textract
+# Simplified Receipt Processor with Amazon Textract
 
 This project demonstrates a serverless invoice processing pipeline tailored for educational purposes. It uses a simplified architecture to extract data from PDF invoices using Amazon Textract and convert it into CSV format.
 

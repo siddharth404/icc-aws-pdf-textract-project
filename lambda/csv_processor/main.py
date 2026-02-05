@@ -21,7 +21,7 @@ def lambda_handler(event, context):
         key = unquote_plus(record['s3']['object']['key'])
         
         try:
-            process_invoice(bucket, key)
+            process_receipt(bucket, key)
         except Exception as e:
             logger.error(f"Error processing {key}: {str(e)}")
             # Optional: Move to error folder
@@ -29,7 +29,7 @@ def lambda_handler(event, context):
 
     return {"status": "success"}
 
-def process_invoice(bucket, key):
+def process_receipt(bucket, key):
     logger.info(f"Processing file: {key} from bucket: {bucket}")
     
     # 1. Call Textract
@@ -50,7 +50,7 @@ def process_invoice(bucket, key):
     if table_name:
         table = dynamodb.Table(table_name)
         table.put_item(Item={
-            'InvoiceId': csv_key,
+            'ReceiptId': csv_key,
             'OriginalFile': key,
             'Status': 'PROCESSED'
         })

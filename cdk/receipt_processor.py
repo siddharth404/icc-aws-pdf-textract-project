@@ -12,17 +12,23 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class InvoiceProcessorWorkflow(Stack):
+class ReceiptProcessorWorkflow(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # 1. S3 Bucket (Public Access for Website, CORS for JS)
         bucket = s3.Bucket(
-            self, "InvoiceBucket",
+            self, "ReceiptBucket",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             website_index_document="index.html",
             public_read_access=True, # WARNING: For Student Demo ONLY
+            block_public_access=s3.BlockPublicAccess(
+                block_public_acls=False,
+                block_public_policy=False,
+                ignore_public_acls=False,
+                restrict_public_buckets=False
+            ),
             cors=[s3.CorsRule(
                 allowed_methods=[s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST, s3.HttpMethods.HEAD],
                 allowed_origins=["*"],
@@ -32,14 +38,14 @@ class InvoiceProcessorWorkflow(Stack):
 
         # 2. DynamoDB Table for Logs
         table = dynamodb.Table(
-            self, "InvoiceMetadata",
-            partition_key=dynamodb.Attribute(name="InvoiceId", type=dynamodb.AttributeType.STRING),
+            self, "ReceiptMetadata",
+            partition_key=dynamodb.Attribute(name="ReceiptId", type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY
         )
 
         # 3. Cognito Identity Pool (To allow "Guest" web uploads)
         identity_pool = cognito.CfnIdentityPool(
-            self, "InvoiceIdentityPool",
+            self, "ReceiptIdentityPool",
             allow_unauthenticated_identities=True
         )
         
@@ -74,7 +80,7 @@ class InvoiceProcessorWorkflow(Stack):
 
         # 4. Textract/CSV Processor Lambda
         processor_fn = _lambda.Function(
-            self, "invoice-processor-fn",
+            self, "receipt-processor-fn",
             runtime=_lambda.Runtime.PYTHON_3_9,
             handler="main.lambda_handler",
             code=_lambda.Code.from_asset("lambda/csv_processor"),
