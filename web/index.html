@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invoice Processor</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1259.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+        .card { border: 1px solid #ccc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+        button { background: #0073bb; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; }
+        button:disabled { background: #ccc; }
+        #status { margin-top: 1rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>📄 Automated Invoice Processor</h1>
+    
+    <div class="card">
+        <h3>1. Upload Invoice</h3>
+        <input type="file" id="fileUpload" accept="application/pdf">
+        <button onclick="uploadFile()">Upload PDF</button>
+        <div id="status"></div>
+    </div>
+
+    <div class="card">
+        <h3>2. Processed Files (CSV)</h3>
+        <p>Refresh to see new files (Processing takes ~10 seconds).</p>
+        <button onclick="listFiles()">Refresh List</button>
+        <ul id="fileList"></ul>
+    </div>
+
+    <script>
+        // --- CONFIGURATION (UPDATE THESE AFTER DEPLOY) ---
+        const BUCKET_NAME = 'YOUR_BUCKET_NAME_HERE';
+        const REGION = 'us-east-1'; // e.g. us-east-1
+        const IDENTITY_POOL_ID = 'us-east-1:xxxxxx-xxxx-xxxx-xxxx-xxxxxx';
+        // -------------------------------------------------
+
+        AWS.config.update({
+            region: REGION,
+            credentials: new AWS.CognitoIdentityCredentials({
+                IdentityPoolId: IDENTITY_POOL_ID
+            })
+        });
+
+        const s3 = new AWS.S3({
+            params: {Bucket: BUCKET_NAME}
+        });
+
+        function uploadFile() {
+            const files = document.getElementById('fileUpload').files;
+            if (!files.length) return alert('Please choose a file.');
+            const file = files[0];
+            const fileName = 'uploads/' + file.name;
+
+            document.getElementById('status').innerText = 'Uploading...';
+            
+            s3.upload({Key: fileName, Body: file, ContentType: file.type}, function(err, data) {
+                if (err) {
+                    console.error(err);
+                    document.getElementById('status').innerText = 'Error: ' + err.message;
+                } else {
+                    document.getElementById('status').innerText = 'Upload Success! Processing started...';
+                    setTimeout(listFiles, 5000); // Auto-refresh after 5s
+                }
+            });
+        }
+
+        function listFiles() {
+            s3.listObjects({Prefix: 'output/'}, function(err, data) {
+                if (err) return console.error(err);
+                const list = document.getElementById('fileList');
+                list.innerHTML = '';
+                data.Contents.forEach(obj => {
+                    const url = s3.getSignedUrl('getObject', {Key: obj.Key});
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a href="${url}" target="_blank">${obj.Key.replace('output/', '')}</a>`;
+                    list.appendChild(li);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
