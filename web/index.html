@@ -2,30 +2,44 @@
 <html>
 
 <head>
-    <title>Receipt Processor</title>
+    <title>Resume Processor</title>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1259.0.min.js"></script>
     <style>
         body {
-            font-family: sans-serif;
-            max-width: 800px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
             margin: 2rem auto;
             padding: 0 1rem;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
         }
 
         .card {
-            border: 1px solid #ccc;
-            padding: 1.5rem;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
             border-radius: 8px;
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
         }
 
         button {
-            background: #0073bb;
+            background: #2ecc71;
             color: white;
             border: none;
-            padding: 0.5rem 1rem;
+            padding: 0.7rem 1.5rem;
             cursor: pointer;
             border-radius: 4px;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #27ae60;
         }
 
         button:disabled {
@@ -35,32 +49,73 @@
         #status {
             margin-top: 1rem;
             font-weight: bold;
+            color: #2980b9;
+        }
+
+        .file-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .file-list li {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-list li:last-child {
+            border-bottom: none;
+        }
+
+        .file-list a {
+            text-decoration: none;
+            color: #3498db;
+            font-weight: 500;
+        }
+
+        .header-note {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #ffeeba;
         }
     </style>
 </head>
 
 <body>
-    <h1>📄 Automated Receipt Processor</h1>
+    <h1>📄 Automated Resume Processor (HR Tech)</h1>
+
+    <div class="header-note">
+        <strong>Setup Required:</strong> Please update the <code>BUCKET_NAME</code>, <code>REGION</code>, and
+        <code>IDENTITY_POOL_ID</code> in <code>web/index.html</code> after deployment.
+    </div>
 
     <div class="card">
-        <h3>1. Upload Receipt</h3>
+        <h3>1. Upload Candidate Resume</h3>
+        <p>Upload a PDF resume. The system will automatically extract Name, Email, Phone, Skills, and Education.</p>
         <input type="file" id="fileUpload" accept="application/pdf">
-        <button onclick="uploadFile()">Upload PDF</button>
+        <button onclick="uploadFile()">Upload Resume PDF</button>
         <div id="status"></div>
     </div>
 
     <div class="card">
-        <h3>2. Processed Files (CSV)</h3>
-        <p>Refresh to see new files (Processing takes ~10 seconds).</p>
-        <button onclick="listFiles()">Refresh List</button>
-        <ul id="fileList"></ul>
+        <h3>2. Processed Candidate Data (CSV)</h3>
+        <p>Refresh to see extracted data files. Processing usually takes 10-15 seconds.</p>
+        <button onclick="listFiles()" style="background: #3498db;">Refresh Dashboard</button>
+        <ul id="fileList" class="file-list"></ul>
     </div>
 
     <script>
         // --- CONFIGURATION (UPDATE THESE AFTER DEPLOY) ---
-        const BUCKET_NAME = 'receiptprocessorworkflow-receiptbucket14edeab6-bzwieybzhgvw';
+        const BUCKET_NAME = 'resumeprocessorworkflow-resumebucketd07ccf44-lg7bicei4qhh';
         const REGION = 'us-east-1'; // e.g. us-east-1
-        const IDENTITY_POOL_ID = 'us-east-1:b1837312-0f9a-44ce-8235-34a865de1af1';
+        const IDENTITY_POOL_ID = 'us-east-1:fe2c9b52-d486-4a02-8411-d6605aa34c31';
         // -------------------------------------------------
 
         AWS.config.update({
@@ -94,15 +149,30 @@
         }
 
         function listFiles() {
+            if (BUCKET_NAME === 'YOUR_BUCKET_NAME_HERE') {
+                alert('Please configure BUCKET_NAME in index.html');
+                return;
+            }
+
             s3.listObjects({ Prefix: 'output/' }, function (err, data) {
                 if (err) return console.error(err);
                 const list = document.getElementById('fileList');
                 list.innerHTML = '';
+
+                // Sort by last modified (newest first)
+                data.Contents.sort((a, b) => b.LastModified - a.LastModified);
+
                 data.Contents.forEach(obj => {
                     const url = s3.getSignedUrl('getObject', { Key: obj.Key });
-                    const li = document.createElement('li');
-                    li.innerHTML = `<a href="${url}" target="_blank">${obj.Key.replace('output/', '')}</a>`;
-                    list.appendChild(li);
+                    const name = obj.Key.replace('output/', '');
+                    if (name) {
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <span>📄 ${name}</span>
+                            <a href="${url}" target="_blank">Download CSV</a>
+                        `;
+                        list.appendChild(li);
+                    }
                 });
             });
         }

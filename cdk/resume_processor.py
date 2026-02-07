@@ -12,13 +12,13 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class ReceiptProcessorWorkflow(Stack):
+class ResumeProcessorWorkflow(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # 1. S3 Bucket (Public Access for Website, CORS for JS)
+        # 1. S3 Bucket (Resume storage, Public Access for Website)
         bucket = s3.Bucket(
-            self, "ReceiptBucket",
+            self, "ResumeBucket",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             website_index_document="index.html",
@@ -36,16 +36,16 @@ class ReceiptProcessorWorkflow(Stack):
             )]
         )
 
-        # 2. DynamoDB Table for Logs
+        # 2. DynamoDB Table for Resume MetadataLogs
         table = dynamodb.Table(
-            self, "ReceiptMetadata",
-            partition_key=dynamodb.Attribute(name="ReceiptId", type=dynamodb.AttributeType.STRING),
+            self, "ResumeMetadata",
+            partition_key=dynamodb.Attribute(name="ResumeId", type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY
         )
 
         # 3. Cognito Identity Pool (To allow "Guest" web uploads)
         identity_pool = cognito.CfnIdentityPool(
-            self, "ReceiptIdentityPool",
+            self, "ResumeIdentityPool",
             allow_unauthenticated_identities=True
         )
         
@@ -78,9 +78,9 @@ class ReceiptProcessorWorkflow(Stack):
             roles={"unauthenticated": unauth_role.role_arn}
         )
 
-        # 4. Textract/CSV Processor Lambda
+        # 4. Textract/CSV Processor Lambda (Resume Logic)
         processor_fn = _lambda.Function(
-            self, "receipt-processor-fn",
+            self, "resume-processor-fn",
             runtime=_lambda.Runtime.PYTHON_3_9,
             handler="main.lambda_handler",
             code=_lambda.Code.from_asset("lambda/csv_processor"),
@@ -93,8 +93,10 @@ class ReceiptProcessorWorkflow(Stack):
         # 5. Permissions
         bucket.grant_read_write(processor_fn)
         table.grant_read_write_data(processor_fn)
+        
+        # Updated Permissions for AnalyzeDocument (Queries)
         processor_fn.add_to_role_policy(iam.PolicyStatement(
-            actions=["textract:AnalyzeExpense"],
+            actions=["textract:AnalyzeDocument"],
             resources=["*"]
         ))
 

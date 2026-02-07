@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from cdk.receipt_processor import ReceiptProcessorWorkflow
+from cdk.resume_processor import ResumeProcessorWorkflow
 import aws_cdk as cdk
 
 app = cdk.App()
-ReceiptProcessorWorkflow(app, "ReceiptProcessorWorkflow")
+ResumeProcessorWorkflow(app, "ResumeProcessorWorkflow")
 app.synth()

@@ -21,7 +21,7 @@ def lambda_handler(event, context):
         key = unquote_plus(record['s3']['object']['key'])
         
         try:
-            process_receipt(bucket, key)
+            process_resume(bucket, key)
         except Exception as e:
             logger.error(f"Error processing {key}: {str(e)}")
             # Optional: Move to error folder
@@ -29,16 +29,28 @@ def lambda_handler(event, context):
 
     return {"status": "success"}
 
-def process_receipt(bucket, key):
-    logger.info(f"Processing file: {key} from bucket: {bucket}")
+def process_resume(bucket, key):
+    logger.info(f"Processing resume: {key} from bucket: {bucket}")
     
-    # 1. Call Textract
-    response = textract.analyze_expense(
-        Document={'S3Object': {'Bucket': bucket, 'Name': key}}
+    # Define Queries
+    queries = [
+        {'Text': "What is the candidate's full name?", 'Alias': 'Name'},
+        {'Text': "What is the email address?", 'Alias': 'Email'},
+        {'Text': "What is the phone number?", 'Alias': 'Phone'},
+        {'Text': "What are the technical skills?", 'Alias': 'Skills'},
+        {'Text': "What is the highest degree or education?", 'Alias': 'Education'},
+        {'Text': "How many years of experience?", 'Alias': 'Experience'}
+    ]
+
+    # 1. Call Textract with Queries
+    response = textract.analyze_document(
+        Document={'S3Object': {'Bucket': bucket, 'Name': key}},
+        FeatureTypes=['QUERIES'],
+        QueriesConfig={'Queries': queries}
     )
     
     # 2. Extract Data
-    csv_string = extract_csv_data(response)
+    csv_string = extract_query_results(response)
     
     # 3. Save CSV
     csv_key = key.replace('uploads/', 'output/').replace('.pdf', '.csv')
@@ -50,7 +62,7 @@ def process_receipt(bucket, key):
     if table_name:
         table = dynamodb.Table(table_name)
         table.put_item(Item={
-            'ReceiptId': csv_key,
+            'ResumeId': csv_key,
             'OriginalFile': key,
             'Status': 'PROCESSED'
         })
@@ -61,33 +73,43 @@ def process_receipt(bucket, key):
     s3.delete_object(Bucket=bucket, Key=key)
     logger.info(f"Archived to: {archive_key}")
 
-def extract_csv_data(response):
-    headers = ['Vendor', 'Date', 'Total', 'InvoiceNumber']
-    rows = []
+def extract_query_results(response):
+    headers = ['Name', 'Email', 'Phone', 'Skills', 'Education', 'Experience']
+    data = {h: '' for h in headers}
     
-    for doc in response['ExpenseDocuments']:
-        vendor = ""
-        total = ""
-        date = ""
-        invoice_num = ""
-        
-        for field in doc['SummaryFields']:
-            type_text = field['Type']['Text']
-            value_text = field['ValueDetection']['Text']
-            
-            if type_text == 'VENDOR_NAME':
-                vendor = value_text
-            elif type_text == 'TOTAL':
-                total = value_text
-            elif type_text == 'INVOICE_RECEIPT_DATE':
-                date = value_text
-            elif type_text == 'INVOICE_RECEIPT_ID':
-                invoice_num = value_text
-                
-        rows.append([vendor, date, total, invoice_num])
-        
+    # Map Alias to Value
+    # Textract Query Response Structure:
+    # Blocks of type QUERY_RESULT contain the answer Text.
+    # We need to link QUERY blocks (which have the Alias) to QUERY_RESULT blocks (via Relationships).
+    
+    # Simplification for Synchronous AnalyzeDocument:
+    # We can iterate through blocks, find QUERIES, check their alias, and find the corresponding result.
+    
+    blocks = response['Blocks']
+    key_map = {} # ID -> Alias
+    value_map = {} # ID -> Text
+    
+    for block in blocks:
+        if block['BlockType'] == 'QUERY':
+            if 'Query' in block and 'Alias' in block['Query']:
+                key_map[block['Id']] = block['Query']['Alias']
+        elif block['BlockType'] == 'QUERY_RESULT':
+             value_map[block['Id']] = block['Text']
+             
+    # Now link them
+    for block in blocks:
+        if block['BlockType'] == 'QUERY':
+            alias = block['Query'].get('Alias')
+            if 'Relationships' in block:
+                for rel in block['Relationships']:
+                    if rel['Type'] == 'ANSWER':
+                        # Usually one answer per query
+                        for id in rel['Ids']:
+                            if id in value_map:
+                                data[alias] = value_map[id]
+
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(headers)
-    writer.writerows(rows)
+    writer.writerow([data[h] for h in headers])
     return output.getvalue()
