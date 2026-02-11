@@ -1,0 +1,50 @@
+{
+    "Name": "resumes",
+    "StorageDescriptor": {
+        "Columns": [
+            {
+                "Name": "Name",
+                "Type": "string"
+            },
+            {
+                "Name": "Email",
+                "Type": "string"
+            },
+            {
+                "Name": "Phone",
+                "Type": "string"
+            },
+            {
+                "Name": "Skills",
+                "Type": "string"
+            },
+            {
+                "Name": "University",
+                "Type": "string"
+            },
+            {
+                "Name": "Degree",
+                "Type": "string"
+            },
+            {
+                "Name": "Experience",
+                "Type": "string"
+            }
+        ],
+        "Location": "s3://resumeprocessorworkflow-resumebucketd07ccf44-lg7bicei4qhh/processed/",
+        "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+        "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+        "SerdeInfo": {
+            "SerializationLibrary": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+            "Parameters": {
+                "field.delim": ",",
+                "escape.delim": "\\"
+            }
+        }
+    },
+    "TableType": "EXTERNAL_TABLE",
+    "Parameters": {
+        "skip.header.line.count": "1",
+        "classification": "csv"
+    }
+}
