@@ -1,0 +1,6 @@
+Name,Email,Phone,Skills,University,Degree,Experience,Confidence,Processed_At
+John Doe,john.doe@example.com,+1-555-010-9988,"Python, AWS, Docker, Kubernetes",University of Washington,Bachelor of Science,5 years,98.5,2026-02-12T10:00:00Z
+Jane Smith,jane.smith@email.com,+1-555-019-2233,"Java, Spring Boot, React, SQL",Georgia Institute of Technology,Master of Computer Science,3 years,96.2,2026-02-12T10:05:00Z
+Robert Brown,rbrown.dev@tech.net,+1-555-011-4455,"Node.js, TypeScript, AWS Lambda, DynamoDB",MIT,PhD in Computer Science,7 years,99.1,2026-02-12T10:10:00Z
+Emily Davis,emily.d@creative.io,+1-555-012-6677,"Figma, UI/UX, HTML/CSS, JavaScript",Rhode Island School of Design,Bachelor of Fine Arts,4 years,94.8,2026-02-12T10:15:00Z
+Michael Wilson,m.wilson@corp.org,+1-555-013-8899,"Project Management, Jira, Agile, Scrum",Stanford University,MBA,10 years,97.4,2026-02-12T10:20:00Z
