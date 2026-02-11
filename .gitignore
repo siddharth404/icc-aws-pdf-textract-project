@@ -1,13 +1,19 @@
+
+# Python
 *.swp
 package-lock.json
-__pycache__
+__pycache__/
+*.py[cod]
 .pytest_cache
 .venv
 *.egg-info
-
-# CDK asset staging directory
-.cdk.staging
-cdk.out
 .vscode
 .flake8
 .python-version
+
+# CDK
+.cdk.staging
+cdk.out
+
+# Misc
+.DS_Store
