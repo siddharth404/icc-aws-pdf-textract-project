@@ -45,31 +45,10 @@ def start_job(bucket, key, topic_arn, role_arn):
         {'Text': "How many years of work experience?", 'Alias': 'Experience'}
     ]
     
-    response = textract.start_document_analysis(
-        DocumentLocation={
-            'S3Object': {
-                'Bucket': bucket,
-                'Name': key
-            }
-        },
-        FeatureTypes=['QUERIES', 'FORMS'], # Intelligent extraction
-        QueriesConfig={'Queries': queries},
-        NotificationChannel={
-            'SNSTopicArn': topic_arn,
-            'RoleArn': role_arn
-        },
-        OutputConfig={
-            'S3Bucket': bucket,
-            'S3Prefix': 'textract-raw-output/' 
-        }
-        # We can optionally store raw JSON in S3, or just rely on GetDocumentAnalysis API.
-        # Storing to S3 is good for large files/pagination persistence, but API access is fine for immediate processing.
-        # Let's use OutputConfig so we have the raw JSON if needed, or we can just rely on the API.
-        # If we provide OutputConfig, Textract writes to S3. 
-        # CAUTION: If we provide OutputConfig, we might not get the JobId completion flow the same way or permissions might differ.
-        # Standard async flow usually relies on GetDocumentAnalysis API. 
-        # I will remove OutputConfig to stay standard and rely on GetDocumentAnalysis API calls in the processing lambda.
-    )
+    # Call Textract Async
+    # We use the standard API retrieval pattern (GetDocumentAnalysis) in the processing Lambda
+    # So we do NOT provide OutputConfig here.
+
     # Actually, removing OutputConfig is safer for the permissions I set up (GetDocumentAnalysis).
     
     # Retrying without OutputConfig for standard API approach
