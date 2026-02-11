@@ -1,7 +1,7 @@
 # Automated PDF Processing Using AWS Serverless Architecture
-**Course:** Cloud Computing & Distributed Systems (CS-550)  
+**Course:** Cloud Computing  
 **Project Type:** Event-Driven Serverless Data Pipeline  
-**Submission Date:** February 12, 2026
+**Submission Date:** February 14, 2026
 
 ---
 
