@@ -158,13 +158,15 @@ Even with a conservative sustained throughput of 50 resumes/sec:
 
 ---
 
-## 9. Appendix: Bonus Dashboard Integration
+## 9. Appendix: Analytics & Dashboard
 
-To visualize the extraction results:
+For detailed instructions on setting up **Amazon Athena** and **Amazon QuickSight** to visualize resume data, please refer to the dedicated [Analytics Setup Guide](docs/analytics_guide.md).
 
-1.  **Athena Setup**: Create an External Table pointing to `s3://[BucketName]/processed/`.
-2.  **QuickSight**: Connect to Athena as a data source.
-3.  **Analytics**: Build visualizations for "Skills Distribution" and "Education Level" with hourly SPICE refreshes.
+**Visualizations Included:**
+-   KPI: Total Resumes Processed
+-   Bar Chart: Top Technical Skills
+-   Pie Chart: Education Distribution
+-   Internal Showcase UI: `web/index.html`
 
 ---
 *End of Submission*

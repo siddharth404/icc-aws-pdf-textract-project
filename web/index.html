@@ -2,16 +2,15 @@
 <html>
 
 <head>
-    <title>Resume Processor</title>
+    <title>Resume Analytics Showcase</title>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1259.0.min.js"></script>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 900px;
+            font-family: 'Segoe UI', sans-serif;
+            max-width: 800px;
             margin: 2rem auto;
             padding: 0 1rem;
-            background-color: #f4f7f6;
-            color: #333;
+            background: #f8f9fa;
         }
 
         h1 {
@@ -21,159 +20,92 @@
 
         .card {
             background: white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             padding: 2rem;
             border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
         }
 
         button {
-            background: #2ecc71;
+            background: #007bff;
             color: white;
             border: none;
-            padding: 0.7rem 1.5rem;
-            cursor: pointer;
+            padding: 10px 20px;
             border-radius: 4px;
-            font-size: 1rem;
-            transition: background 0.3s;
+            cursor: pointer;
         }
 
         button:hover {
-            background: #27ae60;
-        }
-
-        button:disabled {
-            background: #ccc;
+            background: #0056b3;
         }
 
         #status {
-            margin-top: 1rem;
+            margin-top: 10px;
             font-weight: bold;
-            color: #2980b9;
+            color: #28a745;
         }
 
-        .file-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .file-list li {
-            background: #fff;
-            border-bottom: 1px solid #eee;
-            padding: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .file-list li:last-child {
-            border-bottom: none;
-        }
-
-        .file-list a {
-            text-decoration: none;
-            color: #3498db;
-            font-weight: 500;
-        }
-
-        .header-note {
-            background: #fff3cd;
-            color: #856404;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+        .dashboard-link {
+            display: block;
             text-align: center;
-            border: 1px solid #ffeeba;
+            margin-top: 20px;
+            color: #6c757d;
+            text-decoration: none;
         }
     </style>
 </head>
 
 <body>
-    <h1>📄 Automated Resume Processor (HR Tech)</h1>
-
-    <div class="header-note">
-        <strong>Setup Required:</strong> Please update the <code>BUCKET_NAME</code>, <code>REGION</code>, and
-        <code>IDENTITY_POOL_ID</code> in <code>web/index.html</code> after deployment.
-    </div>
+    <h1>🚀 Serverless Resume Analytics</h1>
 
     <div class="card">
-        <h3>1. Upload Candidate Resume</h3>
-        <p>Upload a PDF resume. The system will automatically extract Name, Email, Phone, Skills, and Education.</p>
+        <h3>1. Upload Resume (Internal)</h3>
+        <p>Simulation of candidate application portal.</p>
         <input type="file" id="fileUpload" accept="application/pdf">
-        <button onclick="uploadFile()">Upload Resume PDF</button>
+        <button onclick="uploadFile()">Submit Application</button>
         <div id="status"></div>
     </div>
 
     <div class="card">
-        <h3>2. Processed Candidate Data (CSV)</h3>
-        <p>Refresh to see extracted data files. Processing usually takes 10-15 seconds.</p>
-        <button onclick="listFiles()" style="background: #3498db;">Refresh Dashboard</button>
-        <ul id="fileList" class="file-list"></ul>
+        <h3>2. Analytics Dashboard</h3>
+        <p>Private Internal View (QuickSight). Accessible only via AWS Console.</p>
+        <!-- Replace with your actual QuickSight Dashboard URL if available, or keep generic -->
+        <a href="https://quicksight.aws.amazon.com/" target="_blank" class="dashboard-link">
+            📊 Open QuickSight Dashboard
+        </a>
     </div>
 
     <script>
-        // --- CONFIGURATION (UPDATE THESE AFTER DEPLOY) ---
-        const BUCKET_NAME = 'resumeprocessorworkflow-resumebucketd07ccf44-lg7bicei4qhh';
-        const REGION = 'us-east-1'; // e.g. us-east-1
-        const IDENTITY_POOL_ID = 'us-east-1:fe2c9b52-d486-4a02-8411-d6605aa34c31';
-        // -------------------------------------------------
+        // --- CONFIGURE THESE ---
+        const BUCKET_NAME = 'YOUR_BUCKET_NAME';
+        const REGION = 'us-east-1';
+        const IDENTITY_POOL_ID = 'YOUR_IDENTITY_POOL_ID';
+        // -----------------------
 
         AWS.config.update({
             region: REGION,
-            credentials: new AWS.CognitoIdentityCredentials({
-                IdentityPoolId: IDENTITY_POOL_ID
-            })
+            credentials: new AWS.CognitoIdentityCredentials({ IdentityPoolId: IDENTITY_POOL_ID })
         });
-
-        const s3 = new AWS.S3({
-            params: { Bucket: BUCKET_NAME }
-        });
+        const s3 = new AWS.S3({ params: { Bucket: BUCKET_NAME } });
 
         function uploadFile() {
             const files = document.getElementById('fileUpload').files;
-            if (!files.length) return alert('Please choose a file.');
+            if (!files.length) return alert('Select a file');
             const file = files[0];
-            const fileName = 'uploads/' + file.name;
+            const key = 'incoming/' + file.name; // New folder structure
 
             document.getElementById('status').innerText = 'Uploading...';
+            document.getElementById('status').style.color = 'blue';
 
-            s3.upload({ Key: fileName, Body: file, ContentType: file.type }, function (err, data) {
+            s3.upload({ Key: key, Body: file }, function (err, data) {
                 if (err) {
                     console.error(err);
-                    document.getElementById('status').innerText = 'Error: ' + err.message;
+                    document.getElementById('status').innerText = 'Upload Failed: ' + err.message;
+                    document.getElementById('status').style.color = 'red';
                 } else {
-                    document.getElementById('status').innerText = 'Upload Success! Processing started...';
-                    setTimeout(listFiles, 5000); // Auto-refresh after 5s
+                    document.getElementById('status').innerText = '✅ Upload Success! Processing asynchronous job...';
+                    document.getElementById('status').style.color = 'green';
                 }
-            });
-        }
-
-        function listFiles() {
-            if (BUCKET_NAME === 'YOUR_BUCKET_NAME_HERE') {
-                alert('Please configure BUCKET_NAME in index.html');
-                return;
-            }
-
-            s3.listObjects({ Prefix: 'output/' }, function (err, data) {
-                if (err) return console.error(err);
-                const list = document.getElementById('fileList');
-                list.innerHTML = '';
-
-                // Sort by last modified (newest first)
-                data.Contents.sort((a, b) => b.LastModified - a.LastModified);
-
-                data.Contents.forEach(obj => {
-                    const url = s3.getSignedUrl('getObject', { Key: obj.Key });
-                    const name = obj.Key.replace('output/', '');
-                    if (name) {
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <span>📄 ${name}</span>
-                            <a href="${url}" target="_blank">Download CSV</a>
-                        `;
-                        list.appendChild(li);
-                    }
-                });
             });
         }
     </script>
